@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BuildingMenu } from "./building-menu"
-import { Joystick } from "./joystick"
 
 export function UI() {
   const [showBuildingMenu, setShowBuildingMenu] = useState(false)
@@ -28,9 +27,6 @@ export function UI() {
 
       {/* Building Menu */}
       {showBuildingMenu && <BuildingMenu onClose={() => setShowBuildingMenu(false)} />}
-
-      {/* Joystick */}
-      <Joystick />
 
       {/* Info Panel */}
       <div className="absolute top-4 right-4 z-10">

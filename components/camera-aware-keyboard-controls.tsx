@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 
 interface CameraAwareKeyboardControlsProps {
   onMove: (direction: { x: number; z: number }) => void
@@ -20,18 +20,28 @@ export function CameraAwareKeyboardControls({ onMove, gameStarted, cameraAngle }
     KeyD: false,
   })
 
+  // Utiliser une ref pour onMove pour éviter les dépendances changeantes
+  const onMoveRef = useRef(onMove)
+  onMoveRef.current = onMove
+
+  // Utiliser une ref pour les keys pour éviter la dépendance dans le useEffect
+  const keysRef = useRef(keys)
+  keysRef.current = keys
+
   useEffect(() => {
     if (!gameStarted) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code in keys) {
-        setKeys((prev) => ({ ...prev, [event.code]: true }))
+      const key = event.code as keyof typeof keys
+      if (key in keysRef.current) {
+        setKeys(prev => ({ ...prev, [key]: true }))
       }
     }
 
     const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.code in keys) {
-        setKeys((prev) => ({ ...prev, [event.code]: false }))
+      const key = event.code as keyof typeof keys
+      if (key in keysRef.current) {
+        setKeys(prev => ({ ...prev, [key]: false }))
       }
     }
 
@@ -42,7 +52,7 @@ export function CameraAwareKeyboardControls({ onMove, gameStarted, cameraAngle }
       window.removeEventListener("keydown", handleKeyDown)
       window.removeEventListener("keyup", handleKeyUp)
     }
-  }, [gameStarted, keys])
+  }, [gameStarted]) // Retirer la dépendance 'keys'
 
   useEffect(() => {
     if (!gameStarted) return
@@ -81,8 +91,8 @@ export function CameraAwareKeyboardControls({ onMove, gameStarted, cameraAngle }
       direction.z /= length
     }
 
-    onMove(direction)
-  }, [keys, onMove, gameStarted, cameraAngle])
+    onMoveRef.current(direction)
+  }, [keys, gameStarted, cameraAngle]) // Garder ces dépendances
 
   return null
 }

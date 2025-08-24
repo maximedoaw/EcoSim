@@ -1,7 +1,7 @@
 "use client"
 
 import { Canvas } from "@react-three/fiber"
-import { Suspense, useState, useCallback } from "react"
+import { Suspense, useState, useCallback, useRef, useMemo } from "react"
 import { Scene } from "./scene"
 import { GameEngine } from "./game-engine"
 import { IntroAnimation } from "./intro-animation"
@@ -18,20 +18,23 @@ export function EcoSimUniverse() {
   const [playerPosition, setPlayerPosition] = useState<[number, number, number]>([0, 1, 0])
   const [placedItems, setPlacedItems] = useState<Array<{ position: [number, number, number]; type: string }>>([])
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
-  const [cameraAngle, setCameraAngle] = useState(0)
+  
+  const cameraAngleRef = useRef(0)
+  const setMovementRef = useRef(setMovement)
+  setMovementRef.current = setMovement
 
-  const handleIntroComplete = () => {
+  const handleIntroComplete = useCallback(() => {
     setShowIntro(false)
     setShowMission(true)
-  }
+  }, [])
 
-  const handleMissionComplete = () => {
+  const handleMissionComplete = useCallback(() => {
     setShowMission(false)
     setGameStarted(true)
-  }
+  }, [])
 
   const handleMovement = useCallback((direction: { x: number; z: number }) => {
-    setMovement(direction)
+    setMovementRef.current(direction)
   }, [])
 
   const handlePlayerPositionChange = useCallback((position: [number, number, number]) => {
@@ -40,7 +43,7 @@ export function EcoSimUniverse() {
 
   const handleItemPlaced = useCallback((position: [number, number, number], itemType: string) => {
     setPlacedItems((prev) => [...prev, { position, type: itemType }])
-    setSelectedItem(null) // Clear selection after placing
+    setSelectedItem(null)
   }, [])
 
   const handleItemSelected = useCallback((itemType: string) => {
@@ -48,8 +51,18 @@ export function EcoSimUniverse() {
   }, [])
 
   const handleCameraAngleChange = useCallback((angle: number) => {
-    setCameraAngle(angle)
+    cameraAngleRef.current = angle
   }, [])
+
+  const sceneProps = useMemo(() => ({
+    gameStarted,
+    movement,
+    playerPosition,
+    onPlayerPositionChange: handlePlayerPositionChange,
+    onItemPlaced: handleItemPlaced,
+    selectedItem,
+    onCameraAngleChange: handleCameraAngleChange
+  }), [gameStarted, movement, playerPosition, handlePlayerPositionChange, handleItemPlaced, selectedItem, handleCameraAngleChange])
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
@@ -58,17 +71,15 @@ export function EcoSimUniverse() {
         shadows
         className="bg-gradient-to-b from-sky-400 to-sky-200"
         style={{ width: "100vw", height: "100vh" }}
+        gl={{
+          antialias: false,
+          powerPreference: "high-performance"
+        }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
       >
         <Suspense fallback={null}>
-          <Scene
-            gameStarted={gameStarted}
-            movement={movement}
-            playerPosition={playerPosition}
-            onPlayerPositionChange={handlePlayerPositionChange}
-            onItemPlaced={handleItemPlaced}
-            selectedItem={selectedItem}
-            onCameraAngleChange={handleCameraAngleChange}
-          />
+          <Scene {...sceneProps} />
           {showIntro && <IntroAnimation onComplete={handleIntroComplete} />}
         </Suspense>
       </Canvas>
@@ -83,18 +94,21 @@ export function EcoSimUniverse() {
             onItemSelected={handleItemSelected}
             selectedItem={selectedItem}
           />
+
+          {/* Contrôles clavier invisibles */}
           <CameraAwareKeyboardControls 
             onMove={handleMovement} 
             gameStarted={gameStarted} 
-            cameraAngle={cameraAngle} 
+            cameraAngle={cameraAngleRef.current} 
           />
-          <DirectionalButtons 
-            onMove={handleMovement} 
-            gameStarted={gameStarted} 
-            cameraAngle={cameraAngle} 
-          />
-          <div className="absolute top-4 left-4 z-20">
-            <Compass playerPosition={playerPosition} gameStarted={gameStarted} />
+
+          {/* Boutons directionnels (en bas à droite) */}
+          <div className="absolute bottom-4 right-4 z-20">
+            <DirectionalButtons 
+              onMove={handleMovement} 
+              gameStarted={gameStarted} 
+              cameraAngle={cameraAngleRef.current} 
+            />
           </div>
         </>
       )}

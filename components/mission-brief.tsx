@@ -25,12 +25,12 @@ export function MissionBrief({ onComplete }: MissionBriefProps) {
       >
         <CardHeader>
           <CardTitle className="text-center text-xl md:text-2xl font-bold text-primary">
-            🌍 EcoSim: Simulateur Écologique
+            🌍 EcoWorld: Simulateur Écologique
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-center text-muted-foreground text-sm md:text-base">
-            Bienvenue dans EcoSim ! Votre mission est de créer un écosystème durable tout en maintenant votre EcoScore.
+            Bienvenue dans EcoWorld ! Votre mission est de créer un écosystème durable tout en maintenant votre EcoScore.
           </p>
           <div className="space-y-2 text-xs md:text-sm">
             <div className="flex items-center gap-2">
