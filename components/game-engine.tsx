@@ -5,6 +5,8 @@ import { LiquidGlassMenu } from "./liquid-glass-menu"
 import { GameStats } from "./game-stats"
 import { Compass } from "./compass"
 import { useGameState } from "../hooks/use-game-state"
+import { EnvironmentType } from "@/types"
+import { EnvironmentSelector } from "./environment-selector"
 
 interface GameEngineProps {
   placedItems: Array<{ position: [number, number, number]; type: string }>
@@ -15,6 +17,7 @@ interface GameEngineProps {
 
 export function GameEngine({ placedItems, playerPosition, onItemSelected, selectedItem }: GameEngineProps) {
   const { selectedTool, setSelectedTool, gameStats, placeItem, removeItem, canAfford } = useGameState()
+  const [currentEnvironment, setCurrentEnvironment] = useState<EnvironmentType>("burnedForest")
   const [showMenu, setShowMenu] = useState(false)
   const [showEcoScore, setShowEcoScore] = useState(false)
 
@@ -132,6 +135,11 @@ export function GameEngine({ placedItems, playerPosition, onItemSelected, select
           🍃 Menu
         </button>
       </div>
+
+      <div className="absolute top-20 left-4 z-30 md:top-24 md:left-6">
+        <EnvironmentSelector />
+      </div>
+
 
       {/* --- Bouton EcoScore (haut droit) --- */}
       <div className="absolute top-4 right-4 z-30 md:top-6 md:right-6">

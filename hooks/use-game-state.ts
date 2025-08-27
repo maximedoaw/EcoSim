@@ -32,7 +32,7 @@ export function useGameState() {
     buildings: 0,
     ecoScore: {
       total: 1000,
-      co2: 10000, // kg CO₂e annual budget
+      co2: 82, // kg CO₂e annual budget
       pollution: 80, // Water quality score
       biodiversity: 60, // % vegetation coverage
       energy: 40, // % renewable energy

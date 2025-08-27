@@ -7,6 +7,8 @@ import { ExplorerCharacter } from "./explorer-character"
 import { NPCs } from "./npcs"
 import { CameraController } from "./camera-controller"
 import type * as THREE from "three"
+import { EnvironmentType } from "@/types"
+import { useEnvironment } from "@/hooks/use-select-environment"
 
 interface SceneProps {
   gameStarted: boolean
@@ -15,7 +17,9 @@ interface SceneProps {
   onPlayerPositionChange?: (position: [number, number, number]) => void
   onItemPlaced?: (position: [number, number, number], itemType: string) => void
   selectedItem?: string | null
-  onCameraAngleChange?: (angle: number) => void // Ajouter cette ligne
+  onCameraAngleChange?: (angle: number) => void 
+  currentEnvironment: EnvironmentType 
+
 }
 
 export function Scene({
@@ -25,9 +29,12 @@ export function Scene({
   onPlayerPositionChange,
   onItemPlaced,
   selectedItem,
-  onCameraAngleChange, // Ajouter cette ligne
+  onCameraAngleChange, 
+
 }: SceneProps) {
   const groupRef = useRef<THREE.Group>(null)
+  const { currentEnvironment } = useEnvironment()
+
 
   const handleTerrainClick = (position: [number, number, number]) => {
     console.log("Terrain clicked at:", position)
@@ -65,7 +72,11 @@ export function Scene({
 
       {/* World */}
       <group ref={groupRef}>
-        <InfiniteTerrain playerPosition={playerPosition} onTerrainClick={handleTerrainClick} />
+        <InfiniteTerrain 
+          playerPosition={playerPosition} 
+          onTerrainClick={handleTerrainClick}         
+          currentEnvironment={currentEnvironment}
+        />
 
         {gameStarted && (
           <ExplorerCharacter position={playerPosition} direction={movement} onPositionChange={onPlayerPositionChange} />
