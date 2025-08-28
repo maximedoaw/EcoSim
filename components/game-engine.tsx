@@ -116,25 +116,7 @@ export function GameEngine({ placedItems, playerPosition, onItemSelected, select
   return (
     <>
       {/* --- Bouton Menu (haut gauche) --- */}
-      <div className="absolute top-4 left-4 z-30 md:top-6 md:left-6">
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="
-            px-4 py-2 md:px-5 md:py-2
-            bg-gradient-to-br from-green-700 to-green-500
-            text-white font-bold
-            border-2 border-white/20
-            rounded-md shadow-md
-            hover:from-green-600 hover:to-green-400
-            hover:shadow-lg hover:scale-105
-            active:scale-95
-            transition-all duration-200
-            pixel-font
-          "
-        >
-          🍃 Menu
-        </button>
-      </div>
+
 
       <div className="absolute top-20 left-4 z-30 md:top-24 md:left-6">
         <EnvironmentSelector />

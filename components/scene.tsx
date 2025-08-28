@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, forwardRef, useImperativeHandle } from "react"
 import { Sky } from "@react-three/drei"
 import { InfiniteTerrain } from "./infinite-terrain"
 import { ExplorerCharacter } from "./explorer-character"
@@ -19,10 +19,10 @@ interface SceneProps {
   selectedItem?: string | null
   onCameraAngleChange?: (angle: number) => void 
   currentEnvironment: EnvironmentType 
-
 }
 
-export function Scene({
+// Créer une référence forwardée pour le composant Scene
+const SceneComponent = forwardRef<THREE.Group, SceneProps>(({
   gameStarted,
   movement,
   playerPosition,
@@ -30,11 +30,13 @@ export function Scene({
   onItemPlaced,
   selectedItem,
   onCameraAngleChange, 
-
-}: SceneProps) {
+}: SceneProps, ref) => {
   const groupRef = useRef<THREE.Group>(null)
+  const playerRef = useRef<THREE.Group>(null)
   const { currentEnvironment } = useEnvironment()
 
+  // Exposer la référence du joueur au composant parent
+  useImperativeHandle(ref, () => playerRef.current as THREE.Group)
 
   const handleTerrainClick = (position: [number, number, number]) => {
     console.log("Terrain clicked at:", position)
@@ -49,7 +51,7 @@ export function Scene({
         playerPosition={playerPosition} 
         direction={movement} 
         gameStarted={gameStarted} 
-        onCameraAngleChange={onCameraAngleChange} // Ajouter cette ligne
+        onCameraAngleChange={onCameraAngleChange}
       />
       {/* Lighting */}
       <ambientLight intensity={0.6} />
@@ -76,14 +78,24 @@ export function Scene({
           playerPosition={playerPosition} 
           onTerrainClick={handleTerrainClick}         
           currentEnvironment={currentEnvironment}
+          playerRef={playerRef} // Passer la référence du joueur
         />
 
         {gameStarted && (
-          <ExplorerCharacter position={playerPosition} direction={movement} onPositionChange={onPlayerPositionChange} />
+          <ExplorerCharacter 
+            position={playerPosition} 
+            direction={movement} 
+            onPositionChange={onPlayerPositionChange}
+            ref={playerRef} // Passer la référence au personnage
+          />
         )}
 
         {gameStarted && <NPCs playerPosition={playerPosition} />}
       </group>
     </>
   )
-}
+})
+
+SceneComponent.displayName = "Scene"
+
+export { SceneComponent as Scene }

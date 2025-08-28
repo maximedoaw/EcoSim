@@ -1,26 +1,80 @@
 "use client"
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { Plane, Box, Sphere, Text, Html } from "@react-three/drei"
 import type * as THREE from "three"
 import { EnvironmentType } from "@/types"
 import { useEnvironment } from "@/hooks/use-select-environment"
+import { useFrame } from "@react-three/fiber"
+import gsap from "gsap"
 
 interface InfiniteTerrainProps {
   playerPosition: [number, number, number]
   onTerrainClick?: (position: [number, number, number]) => void,
   currentEnvironment: EnvironmentType
+  playerRef: React.RefObject<THREE.Object3D>
 }
-
 // Types d'environnements disponibles
 
 
 
-export function InfiniteTerrain({ playerPosition, onTerrainClick }: InfiniteTerrainProps) {
+export function InfiniteTerrain({ playerPosition, onTerrainClick, playerRef }: InfiniteTerrainProps) {
+
   const { currentEnvironment } = useEnvironment()
+  
+  // Référence pour les éléments animés
+  const oceanRefs = useRef<THREE.Mesh[]>([])
+
+  // Animation de l'océan avec GSAP
+  useEffect(() => {
+    if (oceanRefs.current.length > 0) {
+      oceanRefs.current.forEach((ocean) => {
+        gsap.to(ocean.position, {
+          y: Math.sin(Date.now() * 0.001) * 0.3 + 0.1,
+          duration: 2,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut"
+        })
+      })
+    }
+  }, [currentEnvironment])
+
+  // Vérification des collisions
+  useFrame(() => {
+    if (!playerRef.current) return
+    
+    const player = playerRef.current
+    const playerPos = player.position
+    
+    // Vérifier les collisions avec les obstacles dans chaque chunk
+    terrainChunks.forEach(chunk => {
+      // Ici, vous devriez implémenter une logique de détection de collision
+      // basée sur la position du joueur et les obstacles dans le chunk
+      // Pour l'exemple, nous allons simplement empêcher le joueur de traverser l'eau
+      if (chunk.biome === "acidOcean" || chunk.biome === "acidBeach") {
+        const chunkX = chunk.position[0]
+        const chunkZ = chunk.position[2]
+        
+        // Si le joueur est dans cette zone d'eau
+        if (Math.abs(playerPos.x - chunkX) < 25 && Math.abs(playerPos.z - chunkZ) < 25) {
+          // Empêcher le joueur d'aller sous l'eau
+          if (playerPos.y < 0.5) {
+            player.position.y = 0.5
+          }
+        }
+      }
+    })
+  })
   
   // Fonction pour déterminer le biome en fonction de la position et de l'environnement sélectionné
   const getBiome = (x: number, z: number) => {
+    // Pour l'océan acide, créer une transition côte/mer
+    if (currentEnvironment === "acidOcean") {
+      // Simuler une côte - plus on s'éloigne de l'origine, plus on est en mer
+      const distanceFromOrigin = Math.sqrt(x * x + z * z)
+      return distanceFromOrigin > 100 ? "acidOcean" : "acidBeach"
+    }
     return currentEnvironment
   }
 
@@ -28,7 +82,7 @@ export function InfiniteTerrain({ playerPosition, onTerrainClick }: InfiniteTerr
   const terrainChunks = useMemo(() => {
     const chunks = []
     const chunkSize = 50
-    const renderDistance = 5 // 5x5 chunks autour du joueur
+    const renderDistance = 8 // 8x8 chunks autour du joueur (augmenté pour voir plus loin)
 
     const playerChunkX = Math.floor(playerPosition[0] / chunkSize)
     const playerChunkZ = Math.floor(playerPosition[2] / chunkSize)
@@ -99,7 +153,7 @@ export function InfiniteTerrain({ playerPosition, onTerrainClick }: InfiniteTerr
             {chunk.biome === "meltingGlaciers" && <MeltingGlaciersElements chunkPosition={chunk.position} />}
             {chunk.biome === "pollutedCity" && <PollutedCityElements chunkPosition={chunk.position} />}
             {chunk.biome === "expandingDesert" && <ExpandingDesertElements chunkPosition={chunk.position} />}
-            {chunk.biome === "acidOcean" && <AcidOceanElements chunkPosition={chunk.position} />}
+            {chunk.biome === "acidOcean" && <AcidOceanElements chunkPosition={chunk.position} oceanRefs={oceanRefs}/>}
           </group>
         ))}
       </group>
@@ -641,43 +695,79 @@ function ExpandingDesertElements({ chunkPosition }: { chunkPosition: [number, nu
   )
 }
 
-// Océans acides 🌊🐟
-function AcidOceanElements({ chunkPosition }: { chunkPosition: [number, number, number] }) {
+// Océans acides avec plage 🌊🏖️
+function AcidOceanElements({ chunkPosition, oceanRefs }: { chunkPosition: [number, number, number], oceanRefs: React.MutableRefObject<THREE.Mesh[]> }) {
   const elements = useMemo(() => {
     const acidPools = []
     const deadFish = []
     const acidBubbles = []
     const coral = []
     const rocks = []
+    const floatingTrash = []
+    const beachTrash = []
+    const deadSeaweed = []
+    
+    // Déterminer si c'est de l'océan ou de la plage basé sur la distance du centre
+    const distanceFromCenter = Math.sqrt(chunkPosition[0] * chunkPosition[0] + chunkPosition[2] * chunkPosition[2])
+    const isBeach = distanceFromCenter < 100
     
     for (let i = 0; i < 20; i++) {
       const x = chunkPosition[0] + (Math.random() - 0.5) * 45
       const z = chunkPosition[2] + (Math.random() - 0.5) * 45
       
-      // Pools d'acide
-      acidPools.push({
-        position: [x, 0.1, z] as [number, number, number],
-        size: Math.random() * 6 + 3,
-        intensity: Math.random() * 0.3 + 0.7
-      })
-      
-      // Poissons morts
-      if (Math.random() > 0.7) {
-        deadFish.push({
-          position: [x, 0.2, z] as [number, number, number],
-          rotation: [0, Math.random() * Math.PI, 0] as [number, number, number]
+      if (isBeach) {
+        // Éléments de plage
+        if (Math.random() > 0.7) {
+          beachTrash.push({
+            position: [x, 0.2, z] as [number, number, number],
+            type: Math.floor(Math.random() * 3),
+            rotation: [0, Math.random() * Math.PI, 0] as [number, number, number]
+          })
+        }
+        
+        // Algues mortes sur la plage
+        if (Math.random() > 0.8) {
+          deadSeaweed.push({
+            position: [x, 0.1, z] as [number, number, number],
+            size: Math.random() * 1.5 + 0.5
+          })
+        }
+      } else {
+        // Éléments d'océan
+        // Pools d'acide
+        acidPools.push({
+          position: [x, 0.1, z] as [number, number, number],
+          size: Math.random() * 6 + 3,
+          intensity: Math.random() * 0.3 + 0.7
         })
+        
+        // Poissons morts
+        if (Math.random() > 0.7) {
+          deadFish.push({
+            position: [x, 0.2, z] as [number, number, number],
+            rotation: [0, Math.random() * Math.PI, 0] as [number, number, number]
+          })
+        }
+        
+        // Bulles d'acide
+        if (Math.random() > 0.8) {
+          acidBubbles.push({
+            position: [x, Math.random() * 2 + 0.5, z] as [number, number, number],
+            size: Math.random() * 0.4 + 0.2
+          })
+        }
+        
+        // Déchets flottants
+        if (Math.random() > 0.6) {
+          floatingTrash.push({
+            position: [x, 0.3, z] as [number, number, number],
+            type: Math.floor(Math.random() * 3),
+            rotation: [0, Math.random() * Math.PI, 0] as [number, number, number]
+          })
+        }
       }
       
-      // Bulles d'acide
-      if (Math.random() > 0.8) {
-        acidBubbles.push({
-          position: [x, Math.random() * 2 + 0.5, z] as [number, number, number],
-          size: Math.random() * 0.4 + 0.2
-        })
-      }
-      
-      // Coraux morts
+      // Coraux morts (commun aux deux)
       if (Math.random() > 0.9) {
         coral.push({
           position: [x, 0, z] as [number, number, number],
@@ -686,7 +776,7 @@ function AcidOceanElements({ chunkPosition }: { chunkPosition: [number, number, 
         })
       }
       
-      // Rochers
+      // Rochers (commun aux deux)
       if (Math.random() > 0.85) {
         rocks.push({
           position: [x, 0, z] as [number, number, number],
@@ -695,50 +785,142 @@ function AcidOceanElements({ chunkPosition }: { chunkPosition: [number, number, 
       }
     }
     
-    return { acidPools, deadFish, acidBubbles, coral, rocks }
+    return { 
+      acidPools, 
+      deadFish, 
+      acidBubbles, 
+      coral, 
+      rocks, 
+      floatingTrash, 
+      beachTrash, 
+      deadSeaweed,
+      isBeach 
+    }
   }, [chunkPosition])
 
   return (
     <>
-      {/* Surface d'eau acide principale */}
-      <Plane args={[45, 45]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
-        <meshStandardMaterial color="#1a237e" transparent opacity={0.8} roughness={0.2} />
+      {/* Surface d'eau/plage principale */}
+      <Plane 
+        args={[45, 45]} 
+        rotation={[-Math.PI / 2, 0, 0]} 
+        position={[0, 0.1, 0]}
+        ref={ref => {
+          if (ref && !elements.isBeach && !oceanRefs.current.includes(ref)) {
+            oceanRefs.current.push(ref)
+          }
+        }}
+      >
+        <meshStandardMaterial
+          color={elements.isBeach ? "#d7ccc8" : "#1a237e"}
+          transparent={!elements.isBeach}
+          opacity={elements.isBeach ? 1 : 0.8}
+          roughness={elements.isBeach ? 0.9 : 0.2}
+        />
       </Plane>
       
-      {/* Pools d'acide plus concentrées */}
-      {elements.acidPools.map((pool, i) => (
-        <Plane 
-          key={`pool-${i}`} 
-          args={[pool.size, pool.size]} 
-          rotation={[-Math.PI / 2, 0, 0]} 
-          position={pool.position}
-        >
-          <meshStandardMaterial color="#7b1fa2" transparent opacity={pool.intensity} roughness={0.1} />
-        </Plane>
-      ))}
+      {elements.isBeach ? (
+        /* ÉLÉMENTS DE PLAGE */
+        <>
+          {/* Déchets sur la plage */}
+          {elements.beachTrash.map((trash, i) => (
+            <group key={`beach-trash-${i}`} position={trash.position} rotation={trash.rotation}>
+              {trash.type === 0 && ( // Bouteille
+                <Box args={[0.3, 0.8, 0.3]}>
+                  <meshStandardMaterial color="#81d4fa" transparent opacity={0.7} roughness={0.2} />
+                </Box>
+              )}
+              {trash.type === 1 && ( // Canette
+                <Box args={[0.4, 0.5, 0.4]}>
+                  <meshStandardMaterial color="#f44336" roughness={0.7} />
+                </Box>
+              )}
+              {trash.type === 2 && ( // Sac plastique
+                <Box args={[0.6, 0.1, 0.6]}>
+                  <meshStandardMaterial color="#e0e0e0" transparent opacity={0.8} roughness={0.9} />
+                </Box>
+              )}
+            </group>
+          ))}
+          
+          {/* Algues mortes */}
+          {elements.deadSeaweed.map((seaweed, i) => (
+            <Box 
+              key={`seaweed-${i}`} 
+              args={[seaweed.size, 0.1, seaweed.size]} 
+              position={seaweed.position}
+            >
+              <meshStandardMaterial color="#795548" roughness={0.9} />
+            </Box>
+          ))}
+          
+          {/* Marques de vagues sur le sable */}
+          <Plane args={[40, 40]} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.15, 0]}>
+            <meshStandardMaterial color="#bcaaa4" roughness={0.9} />
+          </Plane>
+        </>
+      ) : (
+        /* ÉLÉMENTS D'OCÉAN */
+        <>
+          {/* Pools d'acide plus concentrées */}
+          {elements.acidPools.map((pool, i) => (
+            <Plane 
+              key={`pool-${i}`} 
+              args={[pool.size, pool.size]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              position={pool.position}
+            >
+              <meshStandardMaterial color="#7b1fa2" transparent opacity={pool.intensity} roughness={0.1} />
+            </Plane>
+          ))}
+          
+          {/* Poissons morts */}
+          {elements.deadFish.map((fish, i) => (
+            <Box 
+              key={`fish-${i}`} 
+              args={[1, 0.3, 0.5]} 
+              position={fish.position}
+              rotation={fish.rotation}
+            >
+              <meshStandardMaterial color="#ff6f00" roughness={0.8} />
+            </Box>
+          ))}
+          
+          {/* Bulles acides */}
+          {elements.acidBubbles.map((bubble, i) => (
+            <Sphere 
+              key={`bubble-${i}`} 
+              args={[bubble.size]} 
+              position={bubble.position}
+            >
+              <meshStandardMaterial color="#ea80fc" transparent opacity={0.7} roughness={0.1} />
+            </Sphere>
+          ))}
+          
+          {/* Déchets flottants */}
+          {elements.floatingTrash.map((trash, i) => (
+            <group key={`floating-trash-${i}`} position={trash.position} rotation={trash.rotation}>
+              {trash.type === 0 && ( // Bouteille flottante
+                <Box args={[0.3, 0.8, 0.3]}>
+                  <meshStandardMaterial color="#81d4fa" transparent opacity={0.7} roughness={0.2} />
+                </Box>
+              )}
+              {trash.type === 1 && ( // Bidon flottant
+                <Box args={[0.6, 0.6, 0.6]}>
+                  <meshStandardMaterial color="#ffeb3b" roughness={0.7} />
+                </Box>
+              )}
+              {trash.type === 2 && ( // Sac plastique flottant
+                <Box args={[0.8, 0.05, 0.8]}>
+                  <meshStandardMaterial color="#e0e0e0" transparent opacity={0.8} roughness={0.9} />
+                </Box>
+              )}
+            </group>
+          ))}
+        </>
+      )}
       
-      {/* Poissons morts */}
-      {elements.deadFish.map((fish, i) => (
-        <Box 
-          key={`fish-${i}`} 
-          args={[1, 0.3, 0.5]} 
-          position={fish.position}
-          rotation={fish.rotation}
-        >
-          <meshStandardMaterial color="#ff6f00" roughness={0.8} />
-        </Box>
-      ))}
-      
-      {/* Bulles acides */}
-      {elements.acidBubbles.map((bubble, i) => (
-        <Sphere 
-          key={`bubble-${i}`} 
-          args={[bubble.size]} 
-          position={bubble.position}
-        >
-          <meshStandardMaterial color="#ea80fc" transparent opacity={0.7} roughness={0.1} />
-        </Sphere>
-      ))}
+      {/* ÉLÉMENTS COMMUNS (plage et océan) */}
       
       {/* Coraux morts */}
       {elements.coral.map((coral, i) => (
