@@ -2,32 +2,43 @@
 
 import { useState, useEffect } from "react"
 import { EnvironmentType } from "@/types"
-import { useEnvironment } from "../hooks/use-select-environment"
+import { useSelectEnvironment } from "../hooks/use-select-environment"
+import { useGameState } from "../hooks/use-game-state"
 
 interface EnvironmentSelectorProps {
   className?: string
 }
 
 type Environment = {
+  id: EnvironmentType;
   name: string;
   problem: string;
   objective: string;
   impact: string;
   benefits: string[];
-  budget: number;
   strategies: string[];
   points: number;
-  duration: string;
   communityActions: string[];
+  targetScore: number;
+  currentScore: number;
 };
 
-type Tool = {
+type Equipment = {
   id: string;
   name: string;
   description: string;
+  detailedDescription: string;
   cost: number;
   environment: EnvironmentType;
   icon: string;
+  impact: {
+    co2: number;
+    pollution: number;
+    biodiversity: number;
+    energy: number;
+    community: number;
+    water: number;
+  };
 };
 
 type Mission = {
@@ -37,151 +48,15 @@ type Mission = {
   elapsedTime: number;
 };
 
-const environmentsData: Environment[] = [
-  {
-    name: "Forêt",
-    problem: "La déforestation réduit la capacité de la planète à absorber le CO2 et détruit la biodiversité.",
-    objective: "Planter et protéger 1 000 arbres en 2 ans.",
-    impact: "Réduction du CO2 atmosphérique, préservation de la biodiversité et amélioration de la qualité de l'air.",
-    benefits: [
-      "Absorption de 25 tonnes de CO2 par an",
-      "Création d'habitats pour 50+ espèces",
-      "Amélioration de la qualité de l'air local",
-      "Prévention de l'érosion des sols"
-    ],
-    budget: 500,
-    strategies: [
-      "Investir 200 $ dans des graines + pépinières locales.",
-      "Organiser des collectes communautaires pour financer des reboisements.",
-      "Revendre du bois recyclé pour récupérer des fonds (économie circulaire)."
-    ],
-    points: 200,
-    duration: "2 ans",
-    communityActions: [
-      "Planter des arbres en groupe.",
-      "Créer une application locale de suivi des plantations.",
-      "Partage de semences entre joueurs."
-    ]
-  },
-  {
-    name: "Ville",
-    problem: "La surconsommation d'énergie fossile et la pollution urbaine augmentent l'effet de serre.",
-    objective: "Installer 50 panneaux solaires communautaires en 3 ans.",
-    impact: "Diminution de la dépendance aux énergies fossiles et amélioration de la qualité de l'air.",
-    benefits: [
-      "Production de 100 MWh d'énergie renouvelable par an",
-      "Réduction de 50 tonnes d'émissions de CO2",
-      "Création d'emplois locaux dans les énergies vertes",
-      "Sensibilisation de 500+ habitants aux énergies renouvelables"
-    ],
-    budget: 500,
-    strategies: [
-      "Investir 150 $ dans des micro-solutions (lampadaires solaires, chargeurs).",
-      "Créer une coopérative énergétique pour mutualiser les coûts.",
-      "Crowdfunding avec la communauté pour des projets solaires."
-    ],
-    points: 200,
-    duration: "3 ans",
-    communityActions: [
-      "Installer des panneaux collectivement.",
-      "Organiser des événements de sensibilisation.",
-      "Mettre en place du covoiturage et transports verts."
-    ]
-  },
-  {
-    name: "Glacier",
-    problem: "La fonte des glaces accélère la montée du niveau des mers et perturbe les écosystèmes polaires.",
-    objective: "Réduire les émissions locales de CO2 de 20% en 5 ans.",
-    impact: "Stabilisation partielle de la fonte glaciaire et protection des espèces polaires.",
-    benefits: [
-      "Préservation de 1000 km² de surface glaciaire",
-      "Protection de 10+ espèces polaires menacées",
-      "Ralentissement de l'élévation du niveau de la mer",
-      "Collecte de données précieuses pour la recherche climatique"
-    ],
-    budget: 500,
-    strategies: [
-      "Investir 100 $ dans des campagnes de sensibilisation.",
-      "Financer la recherche et protection via dons ciblés.",
-      "Revendre du plastique recyclé pour récolter des fonds."
-    ],
-    points: 200,
-    duration: "5 ans",
-    communityActions: [
-      "Participer à des nettoyages océaniques.",
-      "Financer des expéditions scientifiques.",
-      "Partager des données sur la fonte glaciaire."
-    ]
-  },
-  {
-    name: "Désert",
-    problem: "La désertification réduit les terres cultivables et provoque des migrations climatiques.",
-    objective: "Reverdir 50 hectares de terres arides en 4 ans.",
-    impact: "Amélioration de la sécurité alimentaire et stockage accru de carbone dans le sol.",
-    benefits: [
-      "Séquestration de 100 tonnes de CO2 dans le sol",
-      "Création de 20 hectares de terres cultivables",
-      "Approvisionnement en nourriture pour 100 familles",
-      "Préservation des nappes phréatiques locales"
-    ],
-    budget: 500,
-    strategies: [
-      "Investir 200 $ dans des techniques d'irrigation goutte-à-goutte.",
-      "Utiliser des semences résistantes à la sécheresse.",
-      "Mettre en place des coopératives agricoles."
-    ],
-    points: 200,
-    duration: "4 ans",
-    communityActions: [
-      "Créer des jardins collectifs.",
-      "Partager des systèmes d'irrigation low-cost.",
-      "Former des agriculteurs à l'agroforesterie."
-    ]
-  },
-  {
-    name: "Océan",
-    problem: "La pollution plastique et l'acidification détruisent la vie marine.",
-    objective: "Réduire de 50% les déchets plastiques collectés en 3 ans.",
-    impact: "Protection de la biodiversité marine et amélioration de la pêche durable.",
-    benefits: [
-      "Nettoyage de 5 tonnes de déchets plastiques",
-      "Protection de 15+ espèces marines",
-      "Amélioration de la qualité de l'eau sur 10 km de côtes",
-      "Sensibilisation de 1000+ personnes à la pollution marine"
-    ],
-    budget: 500,
-    strategies: [
-      "Investir 100 $ dans des filets de collecte communautaires.",
-      "Mettre en place un système de consigne pour le plastique.",
-      "Vendre du plastique recyclé pour réinvestir."
-    ],
-    points: 200,
-    duration: "3 ans",
-    communityActions: [
-      "Organiser des nettoyages de plages.",
-      "Créer un système de tri communautaire.",
-      "Sensibiliser sur la consommation de plastique."
-    ]
-  }
-];
-
-const toolsData: Tool[] = [
-  { id: "t1", name: "Kit de plantation", description: "Outils pour planter des arbres efficacement", cost: 50, environment: "burnedForest", icon: "🌱" },
-  { id: "t2", name: "Système d'irrigation", description: "Économiseur d'eau pour zones arides", cost: 75, environment: "expandingDesert", icon: "💧" },
-  { id: "t3", name: "Panneaux solaires", description: "Production d'énergie renouvelable", cost: 100, environment: "pollutedCity", icon: "☀️" },
-  { id: "t4", name: "Filet de nettoyage", description: "Collecte des déchets en mer", cost: 40, environment: "acidOcean", icon: "🧹" },
-  { id: "t5", name: "Capteur de température", description: "Surveillance de la fonte des glaces", cost: 60, environment: "meltingGlaciers", icon: "🌡️" },
-  { id: "t6", name: "Sacs de graines", description: "Variétés résistantes pour reboisement", cost: 30, environment: "burnedForest", icon: "🌿" },
-  { id: "t7", name: "Vélo électrique", description: "Transport écologique en ville", cost: 80, environment: "pollutedCity", icon: "🚲" }
-];
-
 export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps) {
-  const { currentEnvironment, setEnvironment, switchToPrevious, hasPrevious } = useEnvironment()
+  const { currentEnvironment, setEnvironment } = useSelectEnvironment()
+  const { gameStats, updateEcoScore, addCoins } = useGameState()
   const [isOpen, setIsOpen] = useState(false)
-  const [isToolsOpen, setIsToolsOpen] = useState(false)
+  const [isEquipmentOpen, setIsEquipmentOpen] = useState(false)
   const [selectedEnvDetails, setSelectedEnvDetails] = useState<Environment | null>(null)
-  const [globalBudget, setGlobalBudget] = useState(500)
-  const [selectedTools, setSelectedTools] = useState<string[]>([])
+  const [globalBudget, setGlobalBudget] = useState(5000)
+  const [selectedEquipment, setSelectedEquipment] = useState<{id: string, count: number}[]>([])
+  const [showDescription, setShowDescription] = useState<Equipment | null>(null)
   const [mission, setMission] = useState<Mission>({
     progress: 0,
     status: "idle",
@@ -189,36 +64,372 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
     elapsedTime: 0
   })
 
-  const environments: { id: EnvironmentType, label: string, emoji: string, description: string }[] = [
-    { id: "burnedForest", label: "Forêts brûlées", emoji: "🌲🔥", description: "Zones déforestées et incendiées" },
-    { id: "meltingGlaciers", label: "Glaciers fondants", emoji: "❄️", description: "Glaces en fonte et montée des eaux" },
-    { id: "pollutedCity", label: "Villes polluées", emoji: "🌆☁️", description: "Urbanisation et pollution atmosphérique" },
-    { id: "expandingDesert", label: "Déserts en expansion", emoji: "🏜️", description: "Désertification et sécheresse" },
-    { id: "acidOcean", label: "Océans acides", emoji: "🌊🐟", description: "Acidification des océans" }
-  ]
-
-  // Afficher les détails de l'environnement actuel au chargement
-  useEffect(() => {
-    const envNameMap: Record<EnvironmentType, string> = {
-      burnedForest: "Forêt",
-      meltingGlaciers: "Glacier",
-      pollutedCity: "Ville",
-      expandingDesert: "Désert",
-      acidOcean: "Océan"
+  const environmentsData: Environment[] = [
+    {
+      id: "burnedForest",
+      name: "Forêt brûlée",
+      problem: "La déforestation réduit la capacité de la planète à absorber le CO2 et détruit la biodiversité.",
+      objective: "Atteindre un score de biodiversité de 200 points",
+      impact: "Réduction du CO2 atmosphérique, préservation de la biodiversité et amélioration de la qualité de l'air.",
+      benefits: [
+        "Absorption de 25 tonnes de CO2 par an",
+        "Création d'habitats pour 50+ espèces",
+        "Amélioration de la qualité de l'air local",
+        "Prévention de l'érosion des sols"
+      ],
+      strategies: [
+        "Vendre du bois certifié durable à 50$/m³ pour financer les équipements",
+        "Organiser des écotours à 25$/personne pour sensibiliser et financer",
+        "Créer une coopérative de produits forestiers non-ligneux (champignons, baies)",
+        "Développer un programme de compensation carbone à 10$/arbre planté"
+      ],
+      points: gameStats.ecoScore.biodiversity,
+      communityActions: [
+        "Planter des arbres en groupe (5$/participant)",
+        "Créer une application locale de suivi des plantations",
+        "Partage de semences entre joueurs",
+        "Organiser des marches de sensibilisation"
+      ],
+      targetScore: 200,
+      currentScore: gameStats.ecoScore.biodiversity
+    },
+    {
+      id: "pollutedCity",
+      name: "Ville polluée",
+      problem: "La surconsommation d'énergie fossile et la pollution urbaine augmentent l'effet de serre.",
+      objective: "Atteindre un score d'énergie de 200 points",
+      impact: "Diminution de la dépendance aux énergies fossiles et amélioration de la qualité de l'air.",
+      benefits: [
+        "Production de 100 MWh d'énergie renouvelable par an",
+        "Réduction de 50 tonnes d'émissions de CO2",
+        "Création d'emplois locaux dans les énergies vertes",
+        "Sensibilisation de 500+ habitants aux énergies renouvelables"
+      ],
+      strategies: [
+        "Vendre l'excédent d'énergie solaire à 0.15$/kWh au réseau",
+        "Louer des espaces publicitaires sur les bâtiments écologiques à 200$/mois",
+        "Proposer des audits énergétiques à 150$/bâtiment",
+        "Créer une monnaie locale pour les échanges verts"
+      ],
+      points: gameStats.ecoScore.energy,
+      communityActions: [
+        "Installer des panneaux collectivement (cotisation 20$/personne)",
+        "Organiser des événements de sensibilisation",
+        "Mettre en place du covoiturage et transports verts",
+        "Créer des jardins communautaires partagés"
+      ],
+      targetScore: 200,
+      currentScore: gameStats.ecoScore.energy
+    },
+    {
+      id: "meltingGlaciers",
+      name: "Glacier fondant",
+      problem: "La fonte des glaces accélère la montée du niveau des mers et perturbe les écosystèmes polaires.",
+      objective: "Atteindre un score CO2 de 200 points",
+      impact: "Stabilisation partielle de la fonte glaciaire et protection des espèces polaires.",
+      benefits: [
+        "Préservation de 1000 km² de surface glaciaire",
+        "Protection de 10+ espèces polaires menacées",
+        "Ralentissement de l'élévation du niveau de la mer",
+        "Collecte de données précieuses pour la recherche climatique"
+      ],
+      strategies: [
+        "Vendre les données climatiques à 500$/jeu de données aux instituts de recherche",
+        "Proposer des expéditions scientifiques sponsorisées à 1000$/jour",
+        "Créer un fonds de dotation pour la recherche polaire",
+        "Développer un programme d'adoption symbolique d'espèces menacées à 50$/animal"
+      ],
+      points: gameStats.ecoScore.co2,
+      communityActions: [
+        "Participer à des nettoyages océaniques",
+        "Financer des expéditions scientifiques (don 10$/personne)",
+        "Partager des données sur la fonte glaciaire",
+        "Organiser des conférences de sensibilisation"
+      ],
+      targetScore: 200,
+      currentScore: gameStats.ecoScore.co2
+    },
+    {
+      id: "expandingDesert",
+      name: "Désert en expansion",
+      problem: "La désertification réduit les terres cultivables et provoque des migrations climatiques.",
+      objective: "Atteindre un score d'eau de 200 points",
+      impact: "Amélioration de la sécurité alimentaire et stockage accru de carbone dans le sol.",
+      benefits: [
+        "Séquestration de 100 tonnes de CO2 dans le sol",
+        "Création de 20 hectares de terres cultivables",
+        "Approvisionnement en nourriture pour 100 familles",
+        "Préservation des nappes phréatiques locales"
+      ],
+      strategies: [
+        "Vendre les récoltes issues de l'agriculture durable à 3$/kg",
+        "Proposer des systèmes d'irrigation en location à 50$/mois",
+        "Développer l'agrotourisme à 40$/nuit",
+        "Commercialiser des semences adaptées à 10$/sachet"
+      ],
+      points: gameStats.ecoScore.water,
+      communityActions: [
+        "Créer des jardins collectifs (cotisation 15$/personne)",
+        "Partager des systèmes d'irrigation low-cost",
+        "Former des agriculteurs à l'agroforesterie",
+        "Organiser des marchés de produits locaux"
+      ],
+      targetScore: 200,
+      currentScore: gameStats.ecoScore.water
+    },
+    {
+      id: "acidOcean",
+      name: "Océan acide",
+      problem: "La pollution plastique et l'acidification détruisent la vie marine.",
+      objective: "Atteindre un score de pollution de 200 points",
+      impact: "Protection de la biodiversité marine et amélioration de la pêche durable.",
+      benefits: [
+        "Nettoyage de 5 tonnes de déchets plastiques",
+        "Protection de 15+ espèces marines",
+        "Amélioration de la qualité de l'eau sur 10 km de côtes",
+        "Sensibilisation de 1000+ personnes à la pollution marine"
+      ],
+      strategies: [
+        "Vendre le plastique recyclé à 0.5$/kg aux usines de transformation",
+        "Proposer des excursions écotouristiques à 35$/personne",
+        "Développer la pêche durable avec vente directe à 8$/kg",
+        "Créer une ligne de produits dérivés écoresponsables"
+      ],
+      points: gameStats.ecoScore.pollution,
+      communityActions: [
+        "Organiser des nettoyages de plages",
+        "Créer un système de tri communautaire",
+        "Sensibiliser sur la consommation de plastique",
+        "Développer la pêche collaborative"
+      ],
+      targetScore: 200,
+      currentScore: gameStats.ecoScore.pollution
     }
-    
-    const envDetails = environmentsData.find(env => env.name === envNameMap[currentEnvironment])
-    setSelectedEnvDetails(envDetails || null)
-  }, [currentEnvironment])
+  ];
 
-  // Simulation de progression de la mission
+  const equipmentData: Equipment[] = [
+    // Équipements pour Forêt brûlée
+    { 
+      id: "e1", 
+      name: "Kit de plantation", 
+      description: "Outils pour planter des arbres", 
+      detailedDescription: "Kit complet incluant pelles, pioches, gants et guide de plantation. Essentiel pour le reboisement efficace. Chaque kit permet de planter 10 arbres.",
+      cost: 120, 
+      environment: "burnedForest", 
+      icon: "🌱", 
+      impact: { co2: 8, pollution: 3, biodiversity: 20, energy: 0, community: 5, water: 2 } 
+    },
+    { 
+      id: "e2", 
+      name: "Sacs de graines", 
+      description: "Variétés résistantes pour reboisement", 
+      detailedDescription: "Mélange de graines d'espèces natives résistantes aux incendies. Inclut des chênes, pins et érables adaptés au climat local. Chaque sac couvre 100m².",
+      cost: 80, 
+      environment: "burnedForest", 
+      icon: "🌿", 
+      impact: { co2: 5, pollution: 2, biodiversity: 15, energy: 0, community: 3, water: 1 } 
+    },
+    { 
+      id: "e3", 
+      name: "Système d'irrigation", 
+      description: "Économiseur d'eau pour jeunes plants", 
+      detailedDescription: "Système goutte-à-goutte solaire avec réservoir de 500L. Réduit la consommation d'eau de 70% et fonctionne à l'énergie solaire.",
+      cost: 350, 
+      environment: "burnedForest", 
+      icon: "💧", 
+      impact: { co2: 3, pollution: 1, biodiversity: 10, energy: 5, community: 2, water: 15 } 
+    },
+    { 
+      id: "e4", 
+      name: "Serre communautaire", 
+      description: "Cultiver des plants avant transplantation", 
+      detailedDescription: "Serre modulaire de 50m² avec système de contrôle climatique. Permet de faire germer 1000 plants simultanément avant transplantation en forêt.",
+      cost: 2000, 
+      environment: "burnedForest", 
+      icon: "🌻", 
+      impact: { co2: 6, pollution: 3, biodiversity: 18, energy: 8, community: 12, water: 5 } 
+    },
+    { 
+      id: "e5", 
+      name: "Clôture de protection", 
+      description: "Protéger les jeunes plants des animaux", 
+      detailedDescription: "Clôture écologique biodégradable de 100m. Protège les jeunes plants contre les herbivores sans nuire à la faune locale.",
+      cost: 200, 
+      environment: "burnedForest", 
+      icon: "🛡️", 
+      impact: { co2: 2, pollution: 0, biodiversity: 8, energy: 0, community: 3, water: 0 } 
+    },
+    
+    // Équipements pour Ville polluée
+    { 
+      id: "e6", 
+      name: "Panneaux solaires", 
+      description: "Production d'énergie renouvelable", 
+      detailedDescription: "Panneaux solaires photovoltaïques de 300W avec onduleur. Production estimée: 450kWh/an. Installation incluse sur toitures urbaines.",
+      cost: 1500, 
+      environment: "pollutedCity", 
+      icon: "☀️", 
+      impact: { co2: 25, pollution: 8, biodiversity: 3, energy: 35, community: 5, water: 0 } 
+    },
+    { 
+      id: "e7", 
+      name: "Vélo électrique", 
+      description: "Transport écologique en ville", 
+      detailedDescription: "Vélo à assistance électrique avec autonomie de 60km. Parfait pour les déplacements urbains. Réduction des émissions de 2kg CO2/jour.",
+      cost: 800, 
+      environment: "pollutedCity", 
+      icon: "🚲", 
+      impact: { co2: 15, pollution: 5, biodiversity: 2, energy: 8, community: 4, water: 0 } 
+    },
+    { 
+      id: "e8", 
+      name: "Éolienne urbaine", 
+      description: "Générer de l'énergie avec le vent", 
+      detailedDescription: "Petite éolienne verticale adaptée aux zones urbaines. Production: 100kWh/mois. Silencieuse et sans danger pour la faune.",
+      cost: 2500, 
+      environment: "pollutedCity", 
+      icon: "🌬️", 
+      impact: { co2: 18, pollution: 6, biodiversity: 2, energy: 28, community: 4, water: 0 } 
+    },
+    { 
+      id: "e9", 
+      name: "Station de recharge", 
+      description: "Recharger les véhicules électriques", 
+      detailedDescription: "Station de recharge rapide pour véhicules électriques. Capacité: 4 véhicules simultanément. Alimentation solaire optionnelle.",
+      cost: 1200, 
+      environment: "pollutedCity", 
+      icon: "🔌", 
+      impact: { co2: 12, pollution: 4, biodiversity: 0, energy: 20, community: 6, water: 0 } 
+    },
+    { 
+      id: "e10", 
+      name: "Toit vert", 
+      description: "Isolation naturelle et absorption CO2", 
+      detailedDescription: "Système complet de végétalisation de toiture. Réduit les îlots de chaleur urbains, absorbe le CO2 et améliore l'isolation.",
+      cost: 1800, 
+      environment: "pollutedCity", 
+      icon: "🏢", 
+      impact: { co2: 10, pollution: 5, biodiversity: 12, energy: 8, community: 7, water: 6 } 
+    },
+    
+    // Équipements pour Glacier fondant
+    { 
+      id: "e11", 
+      name: "Capteur de température", 
+      description: "Surveillance de la fonte des glaces", 
+      detailedDescription: "Capteur haute précision pour mesurer les variations de température. Transmet les données en temps réel via satellite.",
+      cost: 600, 
+      environment: "meltingGlaciers", 
+      icon: "🌡️", 
+      impact: { co2: 2, pollution: 1, biodiversity: 1, energy: 1, community: 3, water: 0 } 
+    },
+    { 
+      id: "e12", 
+      name: "Station météo", 
+      description: "Collecte de données climatiques", 
+      detailedDescription: "Station météorologique complète avec anémomètre, pluviomètre et baromètre. Données accessibles en ligne.",
+      cost: 800, 
+      environment: "meltingGlaciers", 
+      icon: "📡", 
+      impact: { co2: 3, pollution: 1, biodiversity: 1, energy: 2, community: 4, water: 0 } 
+    },
+    
+    // Équipements pour Désert en expansion
+    { 
+      id: "e13", 
+      name: "Système d'irrigation", 
+      description: "Économiseur d'eau pour zones arides", 
+      detailedDescription: "Système goutte-à-goutte solaire avec réservoir de 1000L. Idéal pour les cultures en milieu désertique.",
+      cost: 750, 
+      environment: "expandingDesert", 
+      icon: "💧", 
+      impact: { co2: 4, pollution: 2, biodiversity: 5, energy: 2, community: 3, water: 10 } 
+    },
+    { 
+      id: "e14", 
+      name: "Plante résistante", 
+      description: "Espèces adaptées à la sécheresse", 
+      detailedDescription: "Sélection de plantes natives résistantes à la sécheresse. Inclut cactus, agaves et autres espèces adaptées.",
+      cost: 400, 
+      environment: "expandingDesert", 
+      icon: "🌾", 
+      impact: { co2: 3, pollution: 1, biodiversity: 6, energy: 1, community: 2, water: 5 } 
+    },
+    
+    // Équipements pour Océan acide
+    { 
+      id: "e15", 
+      name: "Filet de nettoyage", 
+      description: "Collecte des déchets en sea", 
+      detailedDescription: "Filet spécialisé pour collecter les déchets plastiques en mer sans nuire à la faune marine. Capacité: 50kg.",
+      cost: 400, 
+      environment: "acidOcean", 
+      icon: "🧹", 
+      impact: { co2: 3, pollution: 10, biodiversity: 5, energy: 1, community: 4, water: 8 } 
+    },
+    { 
+      id: "e16", 
+      name: "Récif artificiel", 
+      description: "Recréer des habitats marins", 
+      detailedDescription: "Structures modulaires qui imitent les récifs naturels. Favorise la biodiversité marine et protège les côtes.",
+      cost: 1200, 
+      environment: "acidOcean", 
+      icon: "🐠", 
+      impact: { co2: 4, pollution: 5, biodiversity: 15, energy: 2, community: 6, water: 7 } 
+    },
+    
+    // Équipements gratuits (outils de base)
+    { 
+      id: "free1", 
+      name: "Kit éducatif", 
+      description: "Matériel de sensibilisation", 
+      detailedDescription: "Kit complet avec brochures, affiches et présentations pour sensibiliser la communauté aux enjeux environnementaux.",
+      cost: 0, 
+      environment: "burnedForest", 
+      icon: "📚", 
+      impact: { co2: 1, pollution: 1, biodiversity: 2, energy: 1, community: 8, water: 1 } 
+    },
+    { 
+      id: "free2", 
+      name: "Application mobile", 
+      description: "Suivi des actions environnementales", 
+      detailedDescription: "Application mobile pour suivre l'impact des actions, connecter la communauté et partager les meilleures pratiques.",
+      cost: 0, 
+      environment: "pollutedCity", 
+      icon: "📱", 
+      impact: { co2: 1, pollution: 1, biodiversity: 1, energy: 2, community: 10, water: 1 } 
+    }
+  ];
+
+  const environments = environmentsData.map(env => ({
+    id: env.id,
+    label: env.name,
+    emoji: env.id === "burnedForest" ? "🌲🔥" : 
+           env.id === "meltingGlaciers" ? "❄️" : 
+           env.id === "pollutedCity" ? "🌆☁️" : 
+           env.id === "expandingDesert" ? "🏜️" : "🌊🐟",
+    description: env.problem.substring(0, 60) + "..."
+  }))
+
+  // Mettre à jour les scores actuels des environnements
+  useEffect(() => {
+    setSelectedEnvDetails(prev => {
+      if (!prev) return null
+      const updatedEnv = environmentsData.find(env => env.id === prev.id)
+      return updatedEnv ? { ...updatedEnv, currentScore: getCurrentEnvironmentScore(updatedEnv.id) } : null
+    })
+  }, [gameStats, currentEnvironment])
+
+  // Simulation de progression de la mission basée sur l'EcoScore
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (mission.status === "inProgress") {
+    if (mission.status === "inProgress" && selectedEnvDetails) {
       interval = setInterval(() => {
         setMission(prev => {
-          const newProgress = Math.min(prev.progress + 0.5, 100);
+          const currentScore = getCurrentEnvironmentScore(selectedEnvDetails.id);
+          const targetScore = selectedEnvDetails.targetScore;
+          const newProgress = Math.min((currentScore / targetScore) * 100, 100);
           const isCompleted = newProgress >= 100;
           
           return {
@@ -228,50 +439,103 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
             elapsedTime: prev.startTime ? Date.now() - prev.startTime : 0
           };
         });
-      }, 1000);
+      }, 2000);
     }
     
     return () => clearInterval(interval);
-  }, [mission.status]);
+  }, [mission.status, selectedEnvDetails]);
+
+  const getCurrentEnvironmentScore = (envId: EnvironmentType): number => {
+    switch (envId) {
+      case "burnedForest": return gameStats.ecoScore.biodiversity;
+      case "pollutedCity": return gameStats.ecoScore.energy;
+      case "meltingGlaciers": return gameStats.ecoScore.co2;
+      case "expandingDesert": return gameStats.ecoScore.water;
+      case "acidOcean": return gameStats.ecoScore.pollution;
+      default: return 0;
+    }
+  }
 
   const handleEnvironmentSelect = (envId: EnvironmentType) => {
     setEnvironment(envId)
     
-    // Trouver les détails correspondants
-    const envNameMap: Record<EnvironmentType, string> = {
-      burnedForest: "Forêt",
-      meltingGlaciers: "Glacier",
-      pollutedCity: "Ville",
-      expandingDesert: "Désert",
-      acidOcean: "Océan"
+    const envDetails = environmentsData.find(env => env.id === envId)
+    if (envDetails) {
+      setSelectedEnvDetails({ 
+        ...envDetails, 
+        currentScore: getCurrentEnvironmentScore(envId) 
+      })
     }
-    
-    const envDetails = environmentsData.find(env => env.name === envNameMap[envId])
-    setSelectedEnvDetails(envDetails || null)
   }
 
-  const handleToolSelection = (toolId: string, cost: number) => {
-    if (selectedTools.includes(toolId)) {
-      setSelectedTools(selectedTools.filter(id => id !== toolId))
-      setGlobalBudget(prev => prev + cost)
-    } else if (globalBudget >= cost) {
-      setSelectedTools([...selectedTools, toolId])
+  const handleEquipmentSelection = (equipmentId: string, cost: number) => {
+    const existingIndex = selectedEquipment.findIndex(item => item.id === equipmentId)
+    
+    if (existingIndex >= 0) {
+      // Augmenter la quantité
+      const newEquipment = [...selectedEquipment]
+      newEquipment[existingIndex].count += 1
+      setSelectedEquipment(newEquipment)
       setGlobalBudget(prev => prev - cost)
+    } else if (globalBudget >= cost || cost === 0) {
+      // Ajouter nouvel équipement
+      setSelectedEquipment([...selectedEquipment, { id: equipmentId, count: 1 }])
+      if (cost > 0) {
+        setGlobalBudget(prev => prev - cost)
+      }
     }
+  }
+
+  const removeEquipment = (equipmentId: string, cost: number) => {
+    const existingIndex = selectedEquipment.findIndex(item => item.id === equipmentId)
+    
+    if (existingIndex >= 0) {
+      const newEquipment = [...selectedEquipment]
+      if (newEquipment[existingIndex].count > 1) {
+        newEquipment[existingIndex].count -= 1
+      } else {
+        newEquipment.splice(existingIndex, 1)
+      }
+      setSelectedEquipment(newEquipment)
+      if (cost > 0) {
+        setGlobalBudget(prev => prev + cost)
+      }
+    }
+  }
+
+  const getTotalCost = () => {
+    return selectedEquipment.reduce((total, item) => {
+      const equipment = equipmentData.find(e => e.id === item.id)
+      return total + (equipment?.cost || 0) * item.count
+    }, 0)
+  }
+
+  const applyEquipmentEffects = () => {
+    selectedEquipment.forEach(item => {
+      const equipment = equipmentData.find(e => e.id === item.id)
+      if (equipment) {
+        // Appliquer l'impact pour chaque unité de l'équipement
+        for (let i = 0; i < item.count; i++) {
+          updateEcoScore(equipment.impact)
+        }
+      }
+    })
   }
 
   const startMission = () => {
-    if (selectedTools.length === 0) {
-      alert("Sélectionnez au moins un outil pour commencer la mission!")
+    if (selectedEquipment.length === 0) {
+      alert("Sélectionnez au moins un équipement pour commencer la mission!")
       return
     }
     
     setMission({
-      progress: 0,
+      progress: getCurrentEnvironmentScore(currentEnvironment) / (selectedEnvDetails?.targetScore || 100) * 100,
       status: "inProgress",
       startTime: Date.now(),
       elapsedTime: 0
     })
+    
+    applyEquipmentEffects()
   }
 
   const pauseMission = () => {
@@ -298,25 +562,22 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
       elapsedTime: 0
     })
     
-    // Rembourser les outils sélectionnés
-    const totalSpent = selectedTools.reduce((total, toolId) => {
-      const tool = toolsData.find(t => t.id === toolId)
-      return total + (tool?.cost || 0)
-    }, 0)
-    setGlobalBudget(prev => prev + totalSpent)
-    setSelectedTools([])
+    setGlobalBudget(prev => prev + getTotalCost())
+    setSelectedEquipment([])
   }
 
   const completeMission = () => {
     if (mission.status === "completed") {
-      const reward = Math.floor(Math.random() * 100) + 50
+      const reward = Math.floor(getTotalCost() * 0.3) + 100 // 30% du coût + bonus fixe
       setGlobalBudget(prev => prev + reward)
+      addCoins(reward)
       setMission(prev => ({ ...prev, status: "idle" }))
+      setSelectedEquipment([])
     }
   }
 
-  const filteredTools = toolsData.filter(tool => 
-    tool.environment === currentEnvironment || selectedTools.includes(tool.id)
+  const filteredEquipment = equipmentData.filter(equipment => 
+    equipment.environment === currentEnvironment || selectedEquipment.some(item => item.id === equipment.id)
   )
 
   const formatTime = (ms: number) => {
@@ -327,15 +588,101 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
+  const getProgressColor = (progress: number) => {
+    if (progress < 30) return 'bg-red-500'
+    if (progress < 60) return 'bg-yellow-500'
+    if (progress < 80) return 'bg-blue-500'
+    return 'bg-green-500'
+  }
+
+  // Modale Minecraft pour les descriptions d'équipement
+  const EquipmentModal = () => {
+    if (!showDescription) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+        <div className="bg-green-800 border-4 border-green-600 rounded-lg p-6 w-11/12 max-w-md mx-4">
+          {/* En-tête style Minecraft */}
+          <div className="border-b-4 border-green-700 pb-3 mb-4 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-yellow-300" style={{ textShadow: "2px 2px 0 #000" }}>
+              {showDescription.icon} {showDescription.name}
+            </h3>
+            <button 
+              onClick={() => setShowDescription(null)}
+              className="text-white hover:text-yellow-300 text-2xl"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* Contenu de la modale */}
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-yellow-300 font-medium mb-1" style={{ textShadow: "1px 1px 0 #000" }}>Description</h4>
+              <p className="text-white">{showDescription.detailedDescription}</p>
+            </div>
+            
+            <div>
+              <h4 className="text-yellow-300 font-medium mb-1" style={{ textShadow: "1px 1px 0 #000" }}>Coût</h4>
+              <p className="text-white">{showDescription.cost === 0 ? "Gratuit" : `${showDescription.cost}$`}</p>
+            </div>
+            
+            <div>
+              <h4 className="text-yellow-300 font-medium mb-1" style={{ textShadow: "1px 1px 0 #000" }}>Impact environnemental</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm text-white">
+                <div className="flex items-center">
+                  <span className="w-6">🌍</span>
+                  <span>CO₂: +{showDescription.impact.co2}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-6">🌊</span>
+                  <span>Pollution: +{showDescription.impact.pollution}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-6">🌱</span>
+                  <span>Biodiversité: +{showDescription.impact.biodiversity}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-6">⚡</span>
+                  <span>Énergie: +{showDescription.impact.energy}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-6">👥</span>
+                  <span>Communauté: +{showDescription.impact.community}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-6">💧</span>
+                  <span>Eau: +{showDescription.impact.water}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Pied de page style Minecraft */}
+          <div className="mt-6 pt-3 border-t-4 border-green-700">
+            <button
+              onClick={() => setShowDescription(null)}
+              className="w-full bg-green-600 hover:bg-green-500 text-white py-2 px-4 rounded font-bold transition-colors"
+              style={{ textShadow: "1px 1px 0 #000" }}
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
-      {/* Bouton Outils en haut à gauche */}
+      {/* Bouton Équipement en haut à gauche */}
       <button
-        onClick={() => setIsToolsOpen(!isToolsOpen)}
+        onClick={() => setIsEquipmentOpen(!isEquipmentOpen)}
         className="fixed top-4 left-4 z-50 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
       >
-        <span>🛠️</span>
-        <span>Outils</span>
+        <span>⚙️</span>
+        <span>Équipement</span>
         {mission.status !== "idle" && (
           <span className="bg-white text-blue-600 text-xs rounded-full px-2 py-1">
             {mission.status === "inProgress" ? "En cours" : 
@@ -345,13 +692,13 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
         )}
       </button>
 
-      {/* Panneau des outils */}
-      {isToolsOpen && (
+      {/* Panneau des équipements */}
+      {isEquipmentOpen && (
         <div className="fixed top-16 left-4 z-40 w-80 bg-slate-800/95 backdrop-blur-sm rounded-lg shadow-xl p-4 border border-slate-600">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-white font-bold">🛠️ Outils disponibles</h3>
+            <h3 className="text-white font-bold">⚙️ Équipements disponibles</h3>
             <button 
-              onClick={() => setIsToolsOpen(false)}
+              onClick={() => setIsEquipmentOpen(false)}
               className="text-slate-400 hover:text-white"
             >
               ✕
@@ -359,20 +706,21 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
           </div>
           
           <div className="mb-4 p-3 bg-slate-700/50 rounded">
-            <div className="text-white font-medium">Budget global: <span className="text-green-400">{globalBudget}$</span></div>
-            <div className="text-slate-400 text-sm">Sélectionnez les outils pour votre mission</div>
+            <div className="text-white font-medium">Budget mission: <span className="text-green-400">{globalBudget}$</span></div>
+            <div className="text-white font-medium">Vos pièces: <span className="text-yellow-400">{gameStats.coins}$</span></div>
+            <div className="text-slate-400 text-sm">Sélectionnez les équipements pour votre mission</div>
           </div>
           
           {/* Barre de progression de la mission */}
-          {mission.status !== "idle" && (
+          {mission.status !== "idle" && selectedEnvDetails && (
             <div className="mb-4 bg-slate-700/30 p-3 rounded">
               <div className="flex justify-between text-sm text-white mb-1">
                 <span>Progression: {Math.round(mission.progress)}%</span>
-                <span>{formatTime(mission.elapsedTime)}</span>
+                <span>{getCurrentEnvironmentScore(selectedEnvDetails.id)}/{selectedEnvDetails.targetScore}</span>
               </div>
               <div className="w-full bg-slate-600 rounded-full h-2">
                 <div 
-                  className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                  className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(mission.progress)}`}
                   style={{ width: `${mission.progress}%` }}
                 ></div>
               </div>
@@ -385,30 +733,65 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
           )}
           
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {filteredTools.map(tool => (
-              <div
-                key={tool.id}
-                onClick={() => handleToolSelection(tool.id, tool.cost)}
-                className={`p-3 rounded cursor-pointer transition-all ${
-                  selectedTools.includes(tool.id)
-                    ? 'bg-green-600/30 border border-green-500'
-                    : globalBudget >= tool.cost
-                    ? 'bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600'
-                    : 'bg-red-900/30 border border-red-700 cursor-not-allowed opacity-60'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{tool.icon}</span>
-                  <div className="flex-1">
-                    <div className="text-white font-medium">{tool.name}</div>
-                    <div className="text-slate-400 text-sm">{tool.description}</div>
-                  </div>
-                  <div className={`font-bold ${selectedTools.includes(tool.id) ? 'text-green-400' : 'text-white'}`}>
-                    {tool.cost}$
+            {filteredEquipment.map(equipment => {
+              const selectedCount = selectedEquipment.find(item => item.id === equipment.id)?.count || 0
+              const canAfford = globalBudget >= equipment.cost || equipment.cost === 0
+              
+              return (
+                <div
+                  key={equipment.id}
+                  className={`p-3 rounded transition-all ${
+                    selectedCount > 0
+                      ? 'bg-green-600/30 border border-green-500'
+                      : canAfford
+                      ? 'bg-slate-700/50 hover:bg-slate-600/50 border border-slate-600 cursor-pointer'
+                      : 'bg-red-900/30 border border-red-700 opacity-60'
+                  }`}
+                  onClick={() => canAfford && handleEquipmentSelection(equipment.id, equipment.cost)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{equipment.icon}</span>
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{equipment.name}</div>
+                      <div className="text-slate-400 text-sm">{equipment.description}</div>
+                      {selectedCount > 0 && (
+                        <div className="text-green-400 text-xs mt-1">
+                          Quantité: {selectedCount}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <div className={`font-bold ${selectedCount > 0 ? 'text-green-400' : 'text-white'}`}>
+                        {equipment.cost === 0 ? 'Gratuit' : `${equipment.cost}$`}
+                      </div>
+                      {selectedCount > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeEquipment(equipment.id, equipment.cost)
+                          }}
+                          className="text-red-400 hover:text-red-300 text-xs"
+                        >
+                          Retirer
+                        </button>
+                      )}
+                      {equipment.detailedDescription && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowDescription(equipment)
+                          }}
+                          className="bg-blue-500 hover:bg-blue-400 text-white px-2 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                        >
+                          <span>ℹ️</span>
+                          <span>Détails</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           
           <div className="mt-4 flex gap-2 flex-wrap">
@@ -416,6 +799,7 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
               <button
                 onClick={startMission}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded transition-colors"
+                disabled={selectedEquipment.length === 0}
               >
                 Démarrer mission
               </button>
@@ -427,13 +811,13 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
                   onClick={pauseMission}
                   className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white py-2 rounded transition-colors"
                 >
-                  Mettre en pause
+                  Pause
                 </button>
                 <button
                   onClick={resetMission}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded transition-colors"
                 >
-                  Abandonner
+                  Annuler
                 </button>
               </>
             )}
@@ -450,7 +834,7 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
                   onClick={resetMission}
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded transition-colors"
                 >
-                  Abandonner
+                  Annuler
                 </button>
               </>
             )}
@@ -474,6 +858,9 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
           </div>
         </div>
       )}
+
+      {/* Modale pour les descriptions d'équipement */}
+      <EquipmentModal />
 
       {/* Bouton flottant pour ouvrir/fermer le panneau */}
       <button
@@ -511,7 +898,7 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
               {environments.map(env => (
                 <button
                   key={env.id}
-                  onClick={() => handleEnvironmentSelect(env.id)}
+                  onClick={() => handleEnvironmentSelect(env.id as EnvironmentType)}
                   className={`w-full p-3 rounded-lg text-left transition-all duration-200 flex items-start gap-3 ${
                     currentEnvironment === env.id 
                       ? 'bg-green-600/20 border border-green-500/50' 
@@ -544,48 +931,26 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
                   <div>
                     <h4 className="text-sm font-medium text-slate-300 mb-1">Objectif</h4>
                     <p className="text-sm text-slate-400">{selectedEnvDetails.objective}</p>
+                    <div className="w-full bg-slate-700 rounded-full h-2 mt-2">
+                      <div 
+                        className={`h-2 rounded-full ${getProgressColor((selectedEnvDetails.currentScore / selectedEnvDetails.targetScore) * 100)}`}
+                        style={{ width: `${(selectedEnvDetails.currentScore / selectedEnvDetails.targetScore) * 100}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">Progression: {selectedEnvDetails.currentScore}/{selectedEnvDetails.targetScore}</p>
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-slate-300 mb-1">Impact</h4>
+                    <h4 className="text-sm font-medium text-slate-300 mb-1">Impact sur 10 ans</h4>
                     <p className="text-sm text-slate-400">{selectedEnvDetails.impact}</p>
                   </div>
                   
                   <div>
-                    <h4 className="text-sm font-medium text-slate-300 mb-1">Avantages climatiques et écologiques</h4>
+                    <h4 className="text-sm font-medium text-slate-300 mb-1">Stratégies de financement</h4>
                     <ul className="text-sm text-slate-400 space-y-2 mt-2">
-                      {selectedEnvDetails.benefits.map((benefit, i) => (
-                        <li key={i} className="flex items-start">
-                          <span className="text-green-400 mr-2">✓</span>
-                          <span>{benefit}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-slate-300 mb-1">Budget</h4>
-                      <p className="text-sm text-slate-400">{selectedEnvDetails.budget} $</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-slate-300 mb-1">Points</h4>
-                      <p className="text-sm text-slate-400">{selectedEnvDetails.points}</p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-300 mb-1">Durée</h4>
-                    <p className="text-sm text-slate-400">{selectedEnvDetails.duration}</p>
-                    <p className="text-xs text-slate-500 mt-1">Atteignez vos objectifs dans ce délai pour maximiser les bénéfices écologiques</p>
-                  </div>
-                  
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-300 mb-1">Stratégies</h4>
-                    <ul className="text-sm text-slate-400 space-y-1 mt-1">
                       {selectedEnvDetails.strategies.map((strategy, i) => (
                         <li key={i} className="flex items-start">
-                          <span className="mr-2">•</span>
+                          <span className="text-green-400 mr-2">💰</span>
                           <span>{strategy}</span>
                         </li>
                       ))}
@@ -597,7 +962,7 @@ export function EnvironmentSelector({ className = "" }: EnvironmentSelectorProps
                     <ul className="text-sm text-slate-400 space-y-1 mt-1">
                       {selectedEnvDetails.communityActions.map((action, i) => (
                         <li key={i} className="flex items-start">
-                          <span className="mr-2">•</span>
+                          <span className="text-blue-400 mr-2">👥</span>
                           <span>{action}</span>
                         </li>
                       ))}

@@ -32,16 +32,6 @@ export function GameEngine({ placedItems, playerPosition, onItemSelected, select
     [setSelectedTool, onItemSelected],
   )
 
-  const handleInteraction = useCallback(
-    (position: [number, number, number], target?: string) => {
-      if (selectedTool === "hache" && target) {
-        removeItem(target, position)
-      } else if (selectedTool !== "hache" && selectedTool !== null) {
-        placeItem(selectedTool, position)
-      }
-    },
-    [selectedTool, placeItem, removeItem],
-  )
 
   // Données pour l'EcoScore - corrigées pour être cohérentes
   const ecoScoreData = [
@@ -115,15 +105,11 @@ export function GameEngine({ placedItems, playerPosition, onItemSelected, select
 
   return (
     <>
-      {/* --- Bouton Menu (haut gauche) --- */}
-
 
       <div className="absolute top-20 left-4 z-30 md:top-24 md:left-6">
         <EnvironmentSelector />
       </div>
 
-
-      {/* --- Bouton EcoScore (haut droit) --- */}
       <div className="absolute top-4 right-4 z-30 md:top-6 md:right-6">
         <button
           onClick={() => setShowEcoScore(!showEcoScore)}
@@ -172,11 +158,25 @@ export function GameEngine({ placedItems, playerPosition, onItemSelected, select
           <div className="mb-4">
             <div className="flex justify-between items-center">
               <span className="text-white/80">Score Total</span>
-              <span className="text-2xl font-bold text-green-400">{gameStats.ecoScore.total}/1000</span>
+              <span className={`text-2xl font-bold ${
+                gameStats.ecoScore.total >= 700 
+                  ? 'text-green-400' 
+                  : gameStats.ecoScore.total >= 400 
+                  ? 'text-orange-400' 
+                  : 'text-red-400'
+              }`}>
+                {gameStats.ecoScore.total}/1000
+              </span>
             </div>
             <div className="w-full bg-gray-700 rounded-full h-3 mt-2">
-              <div 
-                className="bg-gradient-to-r from-green-500 to-green-300 h-3 rounded-full transition-all duration-500"
+              <div
+                className={`h-3 rounded-full transition-all duration-500 ${
+                  gameStats.ecoScore.total >= 700
+                    ? 'bg-gradient-to-r from-green-500 to-green-300'
+                    : gameStats.ecoScore.total >= 400
+                    ? 'bg-gradient-to-r from-orange-500 to-orange-300'
+                    : 'bg-gradient-to-r from-red-500 to-red-300'
+                }`}
                 style={{ width: `${(gameStats.ecoScore.total / 1000) * 100}%` }}
               />
             </div>

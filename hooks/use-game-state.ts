@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from "react"
 
-interface EcoScore {
+export interface EcoScore {
   total: number
-  co2: number // kg CO₂e budget (starts at 10000)
-  pollution: number // Water/waste management score
-  biodiversity: number // % vegetation coverage
-  energy: number // % renewable energy
-  community: number // Social engagement score
+  co2: number
+  pollution: number
+  biodiversity: number
+  energy: number
+  community: number
+  water: number
 }
 
 interface GameStats {
@@ -21,24 +22,34 @@ interface GameStats {
   ecoScore: EcoScore
 }
 
+interface ToolImpact {
+  co2: number;
+  pollution: number;
+  biodiversity: number;
+  energy: number;
+  community: number;
+  water: number;
+}
+
 export function useGameState() {
   const [selectedTool, setSelectedTool] = useState<string | null>(null)
   const [gameStats, setGameStats] = useState<GameStats>({
-    coins: 100,
+    coins: 5000,
     trees: 20,
     houses: 2,
     water: 2,
     rocks: 15,
     buildings: 0,
     ecoScore: {
-      total: 1000,
-      co2: 82, // kg CO₂e annual budget
-      pollution: 80, // Water quality score
-      biodiversity: 60, // % vegetation coverage
-      energy: 40, // % renewable energy
-      community: 70, // Social engagement
-    },
-  })
+      total: 407,
+      co2: 82,
+      pollution: 80,
+      biodiversity: 60,
+      energy: 40,
+      community: 70,
+      water: 75
+    }
+  });
 
   const costs: Record<string, number> = {
     arbre: 5,
@@ -47,16 +58,45 @@ export function useGameState() {
     maison: 20,
     immeuble: 50,
     hache: 0,
+    // Équipements environnementaux
+    "Kit de plantation": 120,
+    "Sacs de graines": 80,
+    "Système d'irrigation": 350,
+    "Serre communautaire": 2000,
+    "Clôture de protection": 200,
+    "Panneaux solaires": 1500,
+    "Vélo électrique": 800,
+    "Éolienne urbaine": 2500,
+    "Station de recharge": 1200,
+    "Toit vert": 1800,
+    "Capteur de température": 60,
+    "Station météo": 80,
+    "Reflecteur solaire": 50,
+    "Drone de surveillance": 110,
+    "Laboratoire mobile": 130,
+    "Serre désertique": 90,
+    "Plante résistante": 40,
+    "Récupérateur d'eau": 60,
+    "Barrière anti-érosion": 55,
+    "Filet de nettoyage": 40,
+    "Bateau écologique": 100,
+    "Capteur de pH": 70,
+    "Récif artificiel": 120,
+    "Station d'épuration": 150,
+    // Équipements gratuits
+    "Kit éducatif": 0,
+    "Application mobile": 0
   }
 
   const calculateEcoScore = useCallback((ecoData: EcoScore) => {
-    const co2Score = Math.max(0, (ecoData.co2 / 10000) * 200) // Max 200 points
-    const pollutionScore = (ecoData.pollution / 100) * 200 // Max 200 points
-    const biodiversityScore = (ecoData.biodiversity / 100) * 200 // Max 200 points
-    const energyScore = (ecoData.energy / 100) * 200 // Max 200 points
-    const communityScore = (ecoData.community / 100) * 200 // Max 200 points
+    const co2Score = Math.max(0, (ecoData.co2 / 200) * 200)
+    const pollutionScore = (ecoData.pollution / 200) * 200
+    const biodiversityScore = (ecoData.biodiversity / 200) * 200
+    const energyScore = (ecoData.energy / 200) * 200
+    const communityScore = (ecoData.community / 200) * 200
+    const waterScore = (ecoData.water / 200) * 200
 
-    return Math.round(co2Score + pollutionScore + biodiversityScore + energyScore + communityScore)
+    return Math.round((co2Score + pollutionScore + biodiversityScore + energyScore + communityScore + waterScore) / 6)
   }, [])
 
   const canAfford = useCallback(
@@ -65,6 +105,25 @@ export function useGameState() {
     },
     [gameStats.coins],
   )
+
+  const updateEcoScore = useCallback((impact: ToolImpact) => {
+    setGameStats(prev => {
+      const newStats = { ...prev }
+      const newEcoScore = { ...prev.ecoScore }
+      
+      newEcoScore.co2 = Math.max(0, Math.min(200, newEcoScore.co2 + impact.co2))
+      newEcoScore.pollution = Math.max(0, Math.min(200, newEcoScore.pollution + impact.pollution))
+      newEcoScore.biodiversity = Math.max(0, Math.min(200, newEcoScore.biodiversity + impact.biodiversity))
+      newEcoScore.energy = Math.max(0, Math.min(200, newEcoScore.energy + impact.energy))
+      newEcoScore.community = Math.max(0, Math.min(200, newEcoScore.community + impact.community))
+      newEcoScore.water = Math.max(0, Math.min(200, newEcoScore.water + impact.water))
+      
+      newEcoScore.total = calculateEcoScore(newEcoScore)
+      newStats.ecoScore = newEcoScore
+      
+      return newStats
+    })
+  }, [calculateEcoScore])
 
   const placeItem = useCallback(
     (tool: string, position: [number, number, number]) => {
@@ -82,31 +141,32 @@ export function useGameState() {
         switch (tool) {
           case "arbre":
             newStats.trees += 1
-            newEcoScore.co2 += 22 // Trees absorb ~22kg CO₂/year
-            newEcoScore.biodiversity += 2
-            newEcoScore.pollution += 1
+            newEcoScore.co2 = Math.min(200, newEcoScore.co2 + 5)
+            newEcoScore.biodiversity = Math.min(200, newEcoScore.biodiversity + 2)
+            newEcoScore.pollution = Math.min(200, newEcoScore.pollution + 1)
             break
           case "eau":
             newStats.water += 1
-            newEcoScore.pollution += 5
-            newEcoScore.biodiversity += 3
+            newEcoScore.pollution = Math.min(200, newEcoScore.pollution + 5)
+            newEcoScore.biodiversity = Math.min(200, newEcoScore.biodiversity + 3)
+            newEcoScore.water = Math.min(200, newEcoScore.water + 8)
             break
           case "caillou":
             newStats.rocks += 1
-            newEcoScore.co2 -= 5 // Mining impact
+            newEcoScore.co2 = Math.max(0, newEcoScore.co2 - 5)
             break
           case "maison":
             newStats.houses += 1
-            newEcoScore.co2 -= 50 // Construction emissions
-            newEcoScore.community += 5
-            newEcoScore.biodiversity -= 2
+            newEcoScore.co2 = Math.max(0, newEcoScore.co2 - 10)
+            newEcoScore.community = Math.min(200, newEcoScore.community + 5)
+            newEcoScore.biodiversity = Math.max(0, newEcoScore.biodiversity - 2)
             break
           case "immeuble":
             newStats.buildings += 1
-            newEcoScore.co2 -= 200 // High construction emissions
-            newEcoScore.community += 10
-            newEcoScore.biodiversity -= 5
-            newEcoScore.energy += 3 // Assume some efficiency
+            newEcoScore.co2 = Math.max(0, newEcoScore.co2 - 20)
+            newEcoScore.community = Math.min(200, newEcoScore.community + 10)
+            newEcoScore.biodiversity = Math.max(0, newEcoScore.biodiversity - 5)
+            newEcoScore.energy = Math.min(200, newEcoScore.energy + 3)
             break
         }
 
@@ -116,7 +176,7 @@ export function useGameState() {
         return newStats
       })
 
-      console.log(`[v0] Placed ${tool} at position:`, position)
+      console.log(`Placed ${tool} at position:`, position)
     },
     [canAfford, calculateEcoScore],
   )
@@ -132,24 +192,24 @@ export function useGameState() {
             if (newStats.trees > 0) {
               newStats.trees -= 1
               newStats.coins += 2
-              newEcoScore.co2 -= 22 // Lost CO₂ absorption
-              newEcoScore.biodiversity -= 2
+              newEcoScore.co2 = Math.max(0, newEcoScore.co2 - 5)
+              newEcoScore.biodiversity = Math.max(0, newEcoScore.biodiversity - 2)
             }
             break
           case "house":
             if (newStats.houses > 0) {
               newStats.houses -= 1
               newStats.coins += 10
-              newEcoScore.community -= 5
-              newEcoScore.biodiversity += 2 // Land restored
+              newEcoScore.community = Math.max(0, newEcoScore.community - 5)
+              newEcoScore.biodiversity = Math.min(200, newEcoScore.biodiversity + 2)
             }
             break
           case "building":
             if (newStats.buildings > 0) {
               newStats.buildings -= 1
               newStats.coins += 25
-              newEcoScore.community -= 10
-              newEcoScore.biodiversity += 5 // Land restored
+              newEcoScore.community = Math.max(0, newEcoScore.community - 10)
+              newEcoScore.biodiversity = Math.min(200, newEcoScore.biodiversity + 5)
             }
             break
         }
@@ -160,10 +220,17 @@ export function useGameState() {
         return newStats
       })
 
-      console.log(`[v0] Removed ${target} at position:`, position)
+      console.log(`Removed ${target} at position:`, position)
     },
     [calculateEcoScore],
   )
+
+  const addCoins = useCallback((amount: number) => {
+    setGameStats(prev => ({
+      ...prev,
+      coins: prev.coins + amount
+    }))
+  }, [])
 
   return {
     selectedTool,
@@ -172,5 +239,7 @@ export function useGameState() {
     placeItem,
     removeItem,
     canAfford,
+    updateEcoScore,
+    addCoins
   }
 }
